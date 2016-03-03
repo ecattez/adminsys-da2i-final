@@ -39,6 +39,30 @@
 - **Utilisateurs** : root, bernard, georges, robert
 - **Mot de passe** : login utilisateur
 
+Les modifications du réseau et de nom de domaine se font dans les fichiers **/etc/network/interfaces** et **/etc/hosts des machines**.
+Notons que nous allons utiliser Bind9 pour associer les noms des machines à leur IP.
+
+### Exemple des fichiers
+
+- /etc/network/interfaces
+
+    ```
+    auto eth0
+    iface eth0 inet static
+	    address 192.168.194.10
+	    netmask 255.255.255.0
+	    gateway 192.168.194.2
+	    dns-nameservers 192.168.194.10
+    ```
+
+- /etc/hosts
+
+    ```
+    #127.0.0.1		localhost
+    127.0.1.1		serveur.da2i.org	serveur
+    192.168.194.10	serveur.da2i.org
+    ```
+
 ## Caractéristiques détaillées
 
 |  .  | **Serveur** | **Debian** | **ArchLinux** | **FreeBSD** |
@@ -47,29 +71,9 @@
 | **Nom d'accès** | *serveur*.da2i.org | *debian*.da2i.org | *archlinux*.da2i.org | *freebsd*.da2i.org |
 | **Interface Graphique** | mode texte | gnome 800x600 | deepin 800x600 | xfce 800x600 |
 
+Afin que les modifications des fichier soient appliquées, il faut exécuter la commande suivante : `/etc/init.d/networking restart`
+
 # Le serveur
-
-## Exemple du fichier /etc/network/interfaces
-
-```
-auto eth0
-iface eth0 inet static
-	address 192.168.194.10
-	netmask 255.255.255.0
-	gateway 192.168.194.2
-```
-
-Afin que les modifications du fichier soient appliquées, il faut exécuter la commande suivante : `/etc/init.d/networking restart`
-
-## Exemple du fichier /etc/hosts
-
-```
-127.0.0.1		localhost
-127.0.1.1		serveur.da2i.org	serveur
-192.168.194.10	serveur.da2i.org
-```
-
-Afin que les modifications du fichier soient appliquées, il faut exécuter la commande suivante : `/etc/init.d/networking restart`
 
 ## Bind9
 
@@ -127,19 +131,19 @@ nano /etc/bind/zones/db.da2i.org
 ; BIND data file for local loopback interface
 ;
 $TTL    604800
-@       IN      SOA     server.da2i.org. webuser.da2i.org. (
+@       IN      SOA     serveur.da2i.org. webuser.da2i.org. (
                               2         ; Serial
                          604800         ; Refresh
                           86400         ; Retry
                         2419200         ; Expire
                          604800 )       ; Negative Cache TTL
 ;
-da2i.org.       IN      NS      server.da2i.org.
+da2i.org.       IN      NS      serveur.da2i.org.
 da2i.org.       IN      A       192.168.194.10
 ;@      IN      NS      localhost.
 ;@      IN      A       127.0.0.1
 ;@      IN      AAAA    ::1
-server  IN      A       192.168.194.10
+serveur  IN      A       192.168.194.10
 gateway IN      A       192.168.194.2
 debian  IN      A       192.168.194.20
 archlinux       IN      A       192.168.194.30
@@ -157,7 +161,7 @@ nano /etc/bind/zones/db.192
 ; BIND reverse data file for local loopback interface
 ;
 $TTL    604800
-@       IN      SOA     server.da2i.org. webuser.da2i.org. (
+@       IN      SOA     serveur.da2i.org. webuser.da2i.org. (
                               1         ; Serial
                          604800         ; Refresh
                           86400         ; Retry
@@ -166,9 +170,9 @@ $TTL    604800
 ;
 ;@      IN      NS      localhost.
 ;1.0.0  IN      PTR     localhost.
-        IN      NS      server.
+        IN      NS      serveur.
 2       IN      PTR     gateway.da2i.org.
-10      IN      PTR     server.da2i.org.
+10      IN      PTR     serveur.da2i.org.
 20      IN      PTR     debian.da2i.org.
 30      IN      PTR     archlinux.da2i.org.
 40      IN      PTR     freebsd.da2i.org.
@@ -209,13 +213,13 @@ Enfin, on redémarre le service bind9 via la commande suivante : `/etc/init.d/bi
 host -l da2i.org
 ```
 ```
-da2i.org name server server.da2i.org.
+da2i.org name serveur serveur.da2i.org.
 da2i.org has address 192.168.194.10
 archlinux.da2i.org has address 192.168.194.30
 debian.da2i.org has address 192.168.194.20
 freebsd.da2i.org has address 192.168.194.40
 gateway.da2i.org has address 192.168.194.2
-server.da2i.org has address 192.168.194.10
+serveur.da2i.org has address 192.168.194.10
 ```
 
 ## LDAP
@@ -223,5 +227,381 @@ server.da2i.org has address 192.168.194.10
 ### Installation par les paquets
 
 ```
-apt-get install sladp ldap-utils
+apt-get install slapd ldap-utils
 ```
+
+## Configuration du serveur LDAP
+
+On commence par définir la base et l'uri du LDAP.
+
+```
+nano /etc/ldap/ldap.conf
+```
+```
+#
+# LDAP Defaults
+#
+
+# See ldap.conf(5) for details
+# This file should be world readable but not world writable.
+
+#BASE   dc=example,dc=com
+#URI    ldap://ldap.example.com ldap://ldap-master.example.com:666
+
+BASE dc=da2i, dc=org
+URI ldap://192.168.194.10/
+
+#SIZELIMIT      12
+#TIMELIMIT      15
+#DEREF          never
+
+# TLS certificates (needed for GnuTLS)
+TLS_CACERT      /etc/ssl/certs/ca-certificates.crt
+```
+
+Puis on reconfigure l'ensemble.
+
+```
+dpkg-reconfigure slapd
+
+Omit OpenLDAP server configuration? No
+DNS domain name: da2i.org
+Organization name? da2i.org
+Administrator password: root
+Confirm password: root
+Database backend to use: HDB
+Do you want the database to be removed when slapd is purged? No
+Allow LDAPv2 protocol? No
+```
+
+### Configuration des accès
+
+```
+ldapadd -c -Y EXTERNAL -H ldapi:/// -f /etc/ldap/schema/core.ldif
+ldapadd -c -Y EXTERNAL -H ldapi:/// -f /etc/ldap/schema/cosine.ldif
+ldapadd -c -Y EXTERNAL -H ldapi:/// -f /etc/ldap/schema/nis.ldif
+ldapadd -c -Y EXTERNAL -H ldapi:/// -f /etc/ldap/schema/inetorgperson.ldif
+```
+```
+echo "
+dn: cn=config
+changetype: modify
+replace: olcLogLevel
+olcLogLevel: 256
+" > /var/tmp/loglevel.ldif
+```
+```
+ldapmodify -Y EXTERNAL -H ldapi:/// -f /var/tmp/loglevel.ldif
+```
+
+### Configuration de l'indexage
+
+```
+echo "
+dn: olcDatabase={1}hdb,cn=config
+changetype: modify
+add: olcDbIndex
+olcDbIndex: uid eq
+" > /var/tmp/uid_eq.ldif
+```
+```
+ldapmodify -Y EXTERNAL -H ldapi:/// -f /var/tmp/uid_eq.ldif
+```
+
+### Vérification de la configuration
+
+```
+ldapsearch -x
+```
+```
+# extended LDIF
+#
+# LDAPv3
+# base <dc=da2i, dc=org> (default) with scope subtree
+# filter: (objectclass=*)
+# requesting: ALL
+#
+
+# da2i.org
+dn: dc=da2i,dc=org
+objectClass: top
+objectClass: dcObject
+objectClass: organization
+o: da2i.org
+dc: da2i
+
+# admin, da2i.org
+dn: cn=admin,dc=da2i,dc=org
+objectClass: simpleSecurityObject
+objectClass: organizationalRole
+cn: admin
+description: LDAP administrator
+
+# search result
+search: 2
+result: 0 Success
+
+# numResponses: 3
+# numEntries: 2
+```
+
+### Création de l'arbre LDAP
+
+On crée deux objets, **users** et **groups** qui feront offices respectivement de **/etc/passwd** et **/etc/group**.
+Ces deux objets auront pour objectClass **organizationalUnit** et seront préparés par l'intermédiaire d'un fichier temporaire.
+
+```
+nano /var/tmp/ou.ldif
+```
+```
+dn: ou=users,dc=da2i,dc=org
+ou: users
+objectClass: organizationalUnit
+
+dn: ou=groupes,dc=da2i,dc=org
+ou: groupes
+objectClass: organizationalUnit
+```
+
+Après avoir préalablement éteint le serveur ldap avec la commande `invoke-rc.d slapd stop`, on ajoute le contenu du fichier temporaire à l'arbre LDAP.
+
+```
+slapadd -c -v -l /var/tmp/ou.ldif
+```
+
+Après avoir redémarré le serveur ldap avec la commande `invoke-rc.d slapd start`, on effectue une recherche sur ces nouveaux organizationalUnit pour vérifier notre configuration.
+
+```
+ldapsearch -x
+```
+```
+# extended LDIF
+#
+# LDAPv3
+# base <dc=da2i, dc=org> (default) with scope subtree
+# filter: (objectclass=*)
+# requesting: ALL
+#
+
+# da2i.org
+dn: dc=da2i,dc=org
+objectClass: top
+objectClass: dcObject
+objectClass: organization
+o: da2i.org
+dc: da2i
+
+# admin, da2i.org
+dn: cn=admin,dc=da2i,dc=org
+objectClass: simpleSecurityObject
+objectClass: organizationalRole
+cn: admin
+description: LDAP administrator
+
+# users, da2i.org
+dn: ou=users,dc=da2i,dc=org
+ou: users
+objectClass: organizationalUnit
+
+# groups, da2i.org
+dn: ou=groups,dc=da2i,dc=org
+ou: groups
+objectClass: organizationalUnit
+
+# search result
+search: 2
+result: 0 Success
+
+# numResponses: 5
+# numEntries: 4
+```
+
+### Ajout d'utilisateurs
+
+Nous allons maintenant créer nos 3 utilisateurs bernard, georges et robert et les ajouter à l'arbre du LDAP.
+Ces utilisateurs seront créés par l'intermédiaire de 3 fichiers, respectivement /var/tmp/bernard.ldif, /var/tmp/georges.ldif et /var/tmp/robert.ldif.
+
+N'oublions pas non plus d'éteindre le serveur avant toute opération : `invoke-rc.d slapd stop`.
+
+#### Exemple avec l'utilisateur bernard
+
+- Ajout de l'utilisateur
+
+```
+nano /var/tmp/bernard.ldif
+```
+```
+dn: cn=bernard,ou=groups,dc=da2i,dc=org
+cn: bernard
+gidNumber: 1001
+objectClass: top
+objectClass: posixGroup
+
+dn: uid=bernard,ou=users,dc=da2i,dc=org
+uid: bernard
+uidNumber: 1001
+gidNumber: 1001
+cn: bernard
+sn: bernard
+objectClass: top
+objectClass: person
+objectClass: posixAccount
+objectClass: shadowAccount
+loginShell: /bin/bash
+homeDirectory: /home/bernard
+```
+```
+ldapadd -c -x -D cn=admin,dc=da2i,dc=org -W -f /var/tmp/bernard.ldif
+```
+
+- Modification du mot de passe
+
+```
+ldappasswd -x -D cn=admin,dc=da2i,dc=org -W -S uid=bernard,ou=users,dc=da2i,dc=org
+```
+
+- Vérification de l'ajout
+
+```
+ldapsearch -x uid=bernard
+```
+
+On effectue enfin les mêmes opérations pour georges et robert.
+
+## Serveur NFS
+
+### Installation par les paquets
+
+```
+apt-get install nfs-kernel-server
+```
+
+### Configuration du point de montage
+
+```
+mkdir /srv/home
+mkdir /srv/home/bernard
+mkdir /srv/home/georges
+mkdir /srv/home/robert 
+chmod go+rwx /srv/home/bernard
+chmod go+rwx /srv/home/georges
+chmod go+rwx /srv/home/robert
+```
+```
+nano /etc/exports
+```
+```
+/srv/home *.da2i.org(rw,sync,no_subtree_check)
+```
+
+Une fois la configuration terminée, on démarre le serveur nfs via la commande `/etc/init.d/nfs-kernel-server start`.
+
+# Les clients
+
+## Client Debian
+
+### Montage NFS
+
+#### Installation par les paquets
+
+```
+apt-get install libnss-ldap libpam-ldap nscd
+
+dpkg-reconfigure libnss-ldap
+dpkg-reconfigure libpam-ldap
+```
+```
+LDAP server URI: ldap://192.168.194.10/
+Distinguished name of the search base: dc=da2i,dc=org
+LDAP version to use: 3
+Does the LDAP database require login? No
+Special LDAP privileges for root? No
+Make the configuration file readable/writable by its owner only? No
+Allow LDAP admin account to behave like local root? Yes
+Make local root Database admin. No
+Does the LDAP database require login? No
+LDAP administrative account: cn=admin,dc=da2i,dc=org
+LDAP administrative password: <PASSWORD>
+DLocal crypt to use when changing passwords. md5
+```
+
+```
+nano /etc/nsswitch.conf
+```
+```
+passwd:         files ldap
+group:          files ldap
+```
+
+Après avoir préalablement éteint NSCD via la commande `invoke-rc.d nscd stop`, on vérifie l'existence de l'utilisateur bernard
+
+```
+id bernard
+uid=1001(bernard) gid=1001(bernard) groupes=1001(bernard)
+```
+
+#### Configuration du PAM
+
+Nous allons à présent configurer le PAM afin que les identifiants du LDAP soient demandés à l'accueil de la machine.
+
+- /etc/pam.d/common-account
+
+```
+account [success=2 new_authtok_reqd=done default=ignore]        pam_unix.so
+account [success=1 default=ignore]      pam_ldap.so
+
+account requisite                       pam_deny.so
+
+account required                        pam_permit.so
+```
+
+- /etc/pam.d/common-auth
+
+```
+auth    [success=2 default=ignore]      pam_unix.so nullok_secure
+auth    [success=1 default=ignore]      pam_ldap.so use_first_pass
+
+auth    requisite                       pam_deny.so
+
+auth    required                        pam_permit.so
+```
+
+- /etc/pam.d/common-password
+
+```
+password        [success=2 default=ignore]      pam_unix.so obscure sha512
+password        [success=1 user_unknown=ignore default=die]     pam_ldap.so use_authtok try_first_pass
+
+password        requisite                       pam_deny.so
+
+password        required                        pam_permit.so
+```
+
+- /etc/pam.d/common-session
+
+```
+session [default=1]                     pam_permit.so
+
+session requisite                       pam_deny.so
+
+session required                        pam_permit.so
+
+session required        pam_unix.so
+```
+
+### Configuration du fstab
+
+Afin d'associer le répertoire utilisateur du serveur au répertoire du client, on édite le fichier /etc/fstab.
+
+```
+192.168.194.10:/srv/home 	/home 	nfs4 	auto 	0 	0
+```
+
+On peut maintenant redémarrer la machine avec la commande `reboot`.
+
+
+## Sources
+
+- LDAP en 20 min : http://uid.free.fr/Ldap/ldap.html
+- Installation LDAP : http://www.tecmint.com/install-openldap-server-and-administer-with-phpldapadmin-in-debianubuntu/
+- Modification LDAP : http://www.ghacks.net/2010/09/03/modify-ldap-entries-with-the-ldapmodify-command/
