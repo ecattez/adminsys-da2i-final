@@ -8,22 +8,42 @@
 
 # Table des matières
 
-- Caractéristiques des machines
-  - Caractéristiques générales
-  - Caractéristiques détaillées
-- Le serveur
-  - Exemple du fichier /etc/network/interfaces
-  - Exemple du fichier /etc/hosts
-  - Bind9
-      - Installation par les paquets
-      - Configuration des adresses IP DNS
-      - Configuration des '(reverse) zones'
-      - Edition du fichier /etc/bind/zones/db.da2i.org
-      - Edition du fichier /etc/bind/zones/db.192
-      - Vérification des zones saisies
-      - Edition du fichier /etc/resolv.conf
-      - Vérification de la configuration
-  - LDAP
+- [Caractéristiques des machines]()
+  - [Caractéristiques générales]()
+  - [Exemple des fichiers]()
+  - [Caractéristiques détaillées]()
+  - [Programmes clients]()
+- [Le serveur]()
+  - [Bind9]()
+      - [Installation par les paquets]()
+      - [Configuration des adresses IP DNS]()
+      - [Configuration des '(reverse) zones']()
+      - [Edition du fichier /etc/bind/zones/db.da2i.org]()
+      - [Edition du fichier /etc/bind/zones/db.192]()
+      - [Vérification des zones saisies]()
+      - [Edition du fichier /etc/resolv.conf]()
+      - [Vérification de la configuration]()
+  - [LDAP]()
+      - [Installation par les paquets]()
+      - [Configuration du serveur LDAP]()
+          - [Configuration des accès]()
+          - [Configuration de l'indexage]()
+          - [Vérification de la configuration]()
+      - [Création de l'arbre LDAP]()
+      - [Ajout d'utilisateurs]()
+          - [Exemple avec l'utilisateur bernard]()
+  - [Serveur NFS]()
+      - [Installation par les paquets]()
+      - [Configuration du point de montage]()
+- [Les clients]()
+  - [Client Debian]()
+      - [Montage NFS]()
+          - [Installation par les paquets]()
+          - [Configuration du PAM]()
+      - [Configuration du fstab]()
+  - [Client ArchLinux]()
+- [Sources]()
+      
 
 # Caractéristiques des machines
 
@@ -69,9 +89,31 @@ Notons que nous allons utiliser Bind9 pour associer les noms des machines à leu
 | :-- | :---------- | :--------- | :------------ | :---------- |
 | **Adresse IP** | 192.168.194.*10* | 192.168.194.*20* | 192.168.194.*30* | 192.168.194.*40* |
 | **Nom d'accès** | *serveur*.da2i.org | *debian*.da2i.org | *archlinux*.da2i.org | *freebsd*.da2i.org |
-| **Interface Graphique** | mode texte | gnome 800x600 | deepin 800x600 | xfce 800x600 |
+| **Interface Graphique** | mode texte | xfce 800x600 | deepin 800x600 | xfce 800x600 |
+| **Etat** | done | done | doing | to do |
 
 Afin que les modifications des fichier soient appliquées, il faut exécuter la commande suivante : `/etc/init.d/networking restart`
+
+## Programmes clients
+
+Les 3 clients doivent offrir une interface graphique et des outils
+bureautiques de base accessibles en français, anglais et en néerlandais :
+
+   * traitement de texte et tableur via libreoffice
+
+   * navigateur web via firefox
+
+   * outil de gestion de mail via thunderbird
+
+L'installation de ces outils se fait avec les commandes ci-après :
+
+```
+apt-get install iceweasel
+apt-get install icedove
+apt-get install libreoffice
+```
+
+---------------------
 
 # Le serveur
 
@@ -230,7 +272,7 @@ serveur.da2i.org has address 192.168.194.10
 apt-get install slapd ldap-utils
 ```
 
-## Configuration du serveur LDAP
+### Configuration du serveur LDAP
 
 On commence par définir la base et l'uri du LDAP.
 
@@ -274,7 +316,7 @@ Do you want the database to be removed when slapd is purged? No
 Allow LDAPv2 protocol? No
 ```
 
-### Configuration des accès
+#### Configuration des accès
 
 ```
 ldapadd -c -Y EXTERNAL -H ldapi:/// -f /etc/ldap/schema/core.ldif
@@ -294,7 +336,7 @@ olcLogLevel: 256
 ldapmodify -Y EXTERNAL -H ldapi:/// -f /var/tmp/loglevel.ldif
 ```
 
-### Configuration de l'indexage
+#### Configuration de l'indexage
 
 ```
 echo "
@@ -308,7 +350,7 @@ olcDbIndex: uid eq
 ldapmodify -Y EXTERNAL -H ldapi:/// -f /var/tmp/uid_eq.ldif
 ```
 
-### Vérification de la configuration
+#### Vérification de la configuration
 
 ```
 ldapsearch -x
@@ -496,6 +538,8 @@ nano /etc/exports
 
 Une fois la configuration terminée, on démarre le serveur nfs via la commande `/etc/init.d/nfs-kernel-server start`.
 
+---------------------
+
 # Les clients
 
 ## Client Debian
@@ -594,14 +638,31 @@ session required        pam_unix.so
 Afin d'associer le répertoire utilisateur du serveur au répertoire du client, on édite le fichier /etc/fstab.
 
 ```
-192.168.194.10:/srv/home 	/home 	nfs4 	auto 	0 	0
+192.168.194.10:/srv/home        /home   nfs4    auto    0       0
+```
+
+Attention, il se peut qu'une ligne comme ci-après existe. Si tel est le cas, il faut la commenter.
+
+```
+UUID=dd3a0110-1482-4592-8c95-3ba3ebfb8e84 /home           btrfs   defaults    $
 ```
 
 On peut maintenant redémarrer la machine avec la commande `reboot`.
 
+## Client ArchLinux
+
+
 
 ## Sources
 
-- LDAP en 20 min : http://uid.free.fr/Ldap/ldap.html
-- Installation LDAP : http://www.tecmint.com/install-openldap-server-and-administer-with-phpldapadmin-in-debianubuntu/
-- Modification LDAP : http://www.ghacks.net/2010/09/03/modify-ldap-entries-with-the-ldapmodify-command/
+- Bind9
+  - https://wiki.debian.org/fr/Bind9
+  - https://doc.ubuntu-fr.org/bind9
+- LDAP
+  - http://uid.free.fr/Ldap/ldap.html
+  - http://www.tecmint.com/install-openldap-server-and-administer-with-phpldapadmin-in-debianubuntu/
+  - http://www.ghacks.net/2010/09/03/modify-ldap-entries-with-the-ldapmodify-command/
+- ArchLinux
+  - https://wiki.archlinux.fr/Installation
+- Xfce
+  - https://wiki.debian.org/fr/Xfce#Installation_d.27un_nouveau_syst.2BAOg-me_avec_Xfce
