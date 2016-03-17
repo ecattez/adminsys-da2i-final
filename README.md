@@ -41,7 +41,6 @@
           - [Installation par les paquets]()
           - [Configuration du PAM]()
       - [Configuration du fstab]()
-  - [Client ArchLinux]()
 - [Sources]()
       
 
@@ -649,10 +648,6 @@ UUID=dd3a0110-1482-4592-8c95-3ba3ebfb8e84 /home           btrfs   defaults    $
 
 On peut maintenant redémarrer la machine avec la commande `reboot`.
 
-## Client ArchLinux
-
-
-
 ## Sources
 
 - Bind9
@@ -664,5 +659,6 @@ On peut maintenant redémarrer la machine avec la commande `reboot`.
   - http://www.ghacks.net/2010/09/03/modify-ldap-entries-with-the-ldapmodify-command/
 - ArchLinux
   - https://wiki.archlinux.fr/Installation
+  - http://fredbezies.developpez.com/tutoriels/linux/installation-archlinux/
 - Xfce
   - https://wiki.debian.org/fr/Xfce#Installation_d.27un_nouveau_syst.2BAOg-me_avec_Xfce

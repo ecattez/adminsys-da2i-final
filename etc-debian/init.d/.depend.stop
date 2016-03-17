@@ -1,0 +1,12 @@
+TARGETS = atd exim4 nscd saned lightdm urandom sendsigs rsyslog umountnfs.sh rpcbind nfs-common hwclock.sh networking umountfs umountroot halt reboot
+sendsigs: atd exim4 nscd saned lightdm
+rsyslog: sendsigs atd exim4 nscd saned
+umountnfs.sh: sendsigs rsyslog atd exim4 nscd saned lightdm
+rpcbind: umountnfs.sh
+nfs-common: umountnfs.sh
+hwclock.sh: rsyslog atd nfs-common
+networking: umountnfs.sh exim4 rpcbind
+umountfs: urandom umountnfs.sh atd exim4 networking rpcbind hwclock.sh nscd saned lightdm
+umountroot: umountfs
+halt: umountroot
+reboot: umountroot

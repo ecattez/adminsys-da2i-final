@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>adminsys-da2i-projet_final</title>
+<link rel="stylesheet" href="https://stackedit.io/res-min/themes/base.css" />
+<script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS_HTML"></script>
+</head>
+<body><div class="container"><h1 id="adminsys-da2i-projetfinal">adminsys-da2i-projet_final</h1>
+
+
+
+<h2 id="projet-final-dadministration-système-licence-da2i">Projet Final d’Administration Système (Licence DA2I)</h2>
+
+
+
+<h3 id="edouard-cattez">Edouard CATTEZ</h3>
+
+<hr>
+
+<p><a href="http://moodle.univ-lille1.fr/pluginfile.php/214032/mod_resource/content/1/projet-final.txt">Sujet du projet</a></p>
+
+
+
+<h1 id="table-des-matières">Table des matières</h1>
+
+<ul>
+<li><a href="#caractéristiques-des-machines">Caractéristiques des machines</a> <br>
+<ul><li><a href="#caractéristiques-générales">Caractéristiques générales</a></li>
+<li><a href="#exemple-des-fichiers">Exemple des fichiers</a></li>
+<li><a href="#caractéristiques-détaillées">Caractéristiques détaillées</a></li>
+<li><a href="#programmes-clients">Programmes clients</a></li></ul></li>
+<li><a href="#le-serveur">Le serveur</a> <br>
+<ul><li><a href="#bind9">Bind9</a> <br>
+<ul><li><a href="#installation-par-les-paquets">Installation par les paquets</a></li>
+<li><a href="#configuration-des-adresses-ip-dns">Configuration des adresses IP DNS</a></li>
+<li><a href="#configuration-des-reverse-zones">Configuration des ‘(reverse) zones’</a></li>
+<li><a href="#edition-du-fichier-etcbindzonesdbda2iorg">Edition du fichier /etc/bind/zones/db.da2i.org</a></li>
+<li><a href="#edition-du-fichier-etcbindzonesdb192">Edition du fichier /etc/bind/zones/db.192</a></li>
+<li><a href="#vérification-des-zones-saisies">Vérification des zones saisies</a></li>
+<li><a href="#edition-du-fichier-etcresolvconf">Edition du fichier /etc/resolv.conf</a></li>
+<li><a href="#vérification-de-la-configuration">Vérification de la configuration</a></li></ul></li>
+<li><a href="#ldap">LDAP</a> <br>
+<ul><li><a href="#installation-par-les-paquets-1">Installation par les paquets</a></li>
+<li><a href="#configuration-du-serveur-ldap">Configuration du serveur LDAP</a> <br>
+<ul><li><a href="#configuration-des-accès">Configuration des accès</a></li>
+<li><a href="#configuration-de-lindexage">Configuration de l’indexage</a></li>
+<li><a href="#vérification-de-la-configuration-2">Vérification de la configuration</a></li></ul></li>
+<li><a href="#création-de-larbre-ldap">Création de l’arbre LDAP</a></li>
+<li><a href="#ajout-dutilisateurs">Ajout d’utilisateurs</a> <br>
+<ul><li><a href="#exemple-avec-lutilisateur-bernard">Exemple avec l’utilisateur bernard</a></li></ul></li></ul></li>
+<li><a href="#serveur-nfs">Serveur NFS</a> <br>
+<ul><li><a href="#installation-par-les-paquets-2">Installation par les paquets</a></li>
+<li><a href="#configuration-du-point-de-montage">Configuration du point de montage</a></li></ul></li></ul></li>
+<li><a href="#les-clients">Les clients</a> <br>
+<ul><li><a href="#client-debian">Client Debian</a> <br>
+<ul><li><a href="#montage-nfs">Montage NFS</a> <br>
+<ul><li><a href="#installation-par-les-paquets-3">Installation par les paquets</a></li>
+<li><a href="#configuration-du-pam">Configuration du PAM</a></li></ul></li>
+<li><a href="#configuration-du-fstab">Configuration du fstab</a></li></ul></li></ul></li>
+<li><a href="#sources">Sources</a></li>
+</ul>
+
+<h1 id="caractéristiques-des-machines">Caractéristiques des machines</h1>
+
+
+
+<h2 id="caractéristiques-générales">Caractéristiques générales</h2>
+
+<ul>
+<li><strong>Taille de disque</strong> : 10Go</li>
+<li><strong>Netmask</strong> : 255.255.255.0</li>
+<li><strong>Gateway</strong> : 192.168.194.2</li>
+<li><strong>Nom de domaine</strong> : da2i.org</li>
+<li><strong>Bind9</strong> : oui</li>
+<li><strong>SSH</strong> : oui</li>
+<li><strong>Accès par LDAP</strong> : oui</li>
+<li><strong>Utilisateurs</strong> : root, bernard, georges, robert</li>
+<li><strong>Mot de passe</strong> : login utilisateur</li>
+</ul>
+
+<p>Les modifications du réseau et de nom de domaine se font dans les fichiers <strong>/etc/network/interfaces</strong> et <strong>/etc/hosts des machines</strong>. <br>
+Notons que nous allons utiliser Bind9 pour associer les noms des machines à leur IP.</p>
+
+
+
+<h3 id="exemple-des-fichiers">Exemple des fichiers</h3>
+
+<ul>
+<li><p>/etc/network/interfaces</p>
+
+<pre class="prettyprint"><code class=" hljs nginx"><span class="hljs-title">auto</span> eth0
+iface eth0 inet static
+    address <span class="hljs-number">192.168.194.10</span>
+    netmask <span class="hljs-number">255.255.255.0</span>
+    gateway <span class="hljs-number">192.168.194.2</span>
+    dns-nameservers <span class="hljs-number">192.168.194.10</span></code></pre></li>
+<li><p>/etc/hosts</p>
+
+<pre class="prettyprint"><code class=" hljs avrasm">
+<span class="hljs-preprocessor">#127.0.0.1      localhost</span>
+
+<span class="hljs-number">127.0</span><span class="hljs-number">.1</span><span class="hljs-number">.1</span>       serveur<span class="hljs-preprocessor">.da</span>2i<span class="hljs-preprocessor">.org</span>    serveur
+<span class="hljs-number">192.168</span><span class="hljs-number">.194</span><span class="hljs-number">.10</span>  serveur<span class="hljs-preprocessor">.da</span>2i<span class="hljs-preprocessor">.org</span></code></pre></li>
+</ul>
+
+
+
+<h2 id="caractéristiques-détaillées">Caractéristiques détaillées</h2>
+
+<table>
+<thead>
+<tr>
+  <th align="left">.</th>
+  <th align="left"><strong>Serveur</strong></th>
+  <th align="left"><strong>Debian</strong></th>
+  <th align="left"><strong>ArchLinux</strong></th>
+  <th align="left"><strong>FreeBSD</strong></th>
+</tr>
+</thead>
+<tbody><tr>
+  <td align="left"><strong>Adresse IP</strong></td>
+  <td align="left">192.168.194.<em>10</em></td>
+  <td align="left">192.168.194.<em>20</em></td>
+  <td align="left">192.168.194.<em>30</em></td>
+  <td align="left">192.168.194.<em>40</em></td>
+</tr>
+<tr>
+  <td align="left"><strong>Nom d’accès</strong></td>
+  <td align="left"><em>serveur</em>.da2i.org</td>
+  <td align="left"><em>debian</em>.da2i.org</td>
+  <td align="left"><em>archlinux</em>.da2i.org</td>
+  <td align="left"><em>freebsd</em>.da2i.org</td>
+</tr>
+<tr>
+  <td align="left"><strong>Interface Graphique</strong></td>
+  <td align="left">mode texte</td>
+  <td align="left">xfce 800x600</td>
+  <td align="left">deepin 800x600</td>
+  <td align="left">xfce 800x600</td>
+</tr>
+<tr>
+  <td align="left"><strong>Etat</strong></td>
+  <td align="left">done</td>
+  <td align="left">done</td>
+  <td align="left">doing</td>
+  <td align="left">to do</td>
+</tr>
+</tbody></table>
+
+
+<p>Afin que les modifications des fichier soient appliquées, il faut exécuter la commande suivante : <code>/etc/init.d/networking restart</code></p>
+
+
+
+<h2 id="programmes-clients">Programmes clients</h2>
+
+<p>Les 3 clients doivent offrir une interface graphique et des outils <br>
+bureautiques de base accessibles en français, anglais et en néerlandais :</p>
+
+<ul>
+<li><p>traitement de texte et tableur via libreoffice</p></li>
+<li><p>navigateur web via firefox</p></li>
+<li><p>outil de gestion de mail via thunderbird</p></li>
+</ul>
+
+<p>L’installation de ces outils se fait avec les commandes ci-après :</p>
+
+
+
+<pre class="prettyprint"><code class=" hljs cs">apt-<span class="hljs-keyword">get</span> install iceweasel
+apt-<span class="hljs-keyword">get</span> install icedove
+apt-<span class="hljs-keyword">get</span> install libreoffice</code></pre>
+
+<hr>
+
+
+
+<h1 id="le-serveur">Le serveur</h1>
+
+
+
+<h2 id="bind9">Bind9</h2>
+
+
+
+<h3 id="installation-par-les-paquets">Installation par les paquets</h3>
+
+
+
+<pre class="prettyprint"><code class=" hljs bash">apt-get install <span class="hljs-built_in">bind</span>9</code></pre>
+
+
+
+<h3 id="configuration-des-adresses-ip-dns">Configuration des adresses IP DNS</h3>
+
+
+
+<pre class="prettyprint"><code class=" hljs avrasm">nano /etc/bind/named<span class="hljs-preprocessor">.conf</span><span class="hljs-preprocessor">.options</span></code></pre>
+
+
+
+<pre class="prettyprint"><code class=" hljs mathematica">    forwarders <span class="hljs-list">{
+        192.168.194.2;
+        172.18.48.31;
+    }</span>
+
+    dnssec-validation no;</code></pre>
+
+
+
+<h3 id="configuration-des-reverse-zones">Configuration des ‘(reverse) zones’</h3>
+
+<p>On édite ce fichier pour associer chaque adresse IP a un nom de domaine, ou inversement</p>
+
+
+
+<pre class="prettyprint"><code class=" hljs perl">nano /etc/<span class="hljs-keyword">bind</span>/named.conf.<span class="hljs-keyword">local</span></code></pre>
+
+
+
+<pre class="prettyprint"><code class=" hljs fsharp">    zone <span class="hljs-string">"da2i.org"</span> {
+        <span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-title">master</span>;</span>
+        file <span class="hljs-string">"/etc/bind/zones/db.da2i.org"</span>;
+    };
+
+    zone <span class="hljs-string">"192.168.194.in-addr.arpa"</span> {
+        <span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-title">master</span>;</span>
+        file <span class="hljs-string">"/etc/bind/zones/db.192"</span>;
+    };</code></pre>
+
+
+
+<pre class="prettyprint"><code class=" hljs perl"><span class="hljs-keyword">mkdir</span> /etc/<span class="hljs-keyword">bind</span>/zones
+cp /etc/<span class="hljs-keyword">bind</span>/db.<span class="hljs-keyword">local</span> /etc/<span class="hljs-keyword">bind</span>/zones/db.da2i.org
+cp /etc/<span class="hljs-keyword">bind</span>/db.<span class="hljs-number">127</span> /etc/<span class="hljs-keyword">bind</span>/zones/db.<span class="hljs-number">192</span></code></pre>
+
+
+
+<h3 id="edition-du-fichier-etcbindzonesdbda2iorg">Edition du fichier /etc/bind/zones/db.da2i.org</h3>
+
+
+
+<pre class="prettyprint"><code class=" hljs avrasm">nano /etc/bind/zones/db<span class="hljs-preprocessor">.da</span>2i<span class="hljs-preprocessor">.org</span></code></pre>
+
+
+
+<pre class="prettyprint"><code class=" hljs avrasm"><span class="hljs-comment">;</span>
+<span class="hljs-comment">; BIND data file for local loopback interface</span>
+<span class="hljs-comment">;</span>
+$TTL    <span class="hljs-number">604800</span>
+@       <span class="hljs-keyword">IN</span>      SOA     serveur<span class="hljs-preprocessor">.da</span>2i<span class="hljs-preprocessor">.org</span>. webuser<span class="hljs-preprocessor">.da</span>2i<span class="hljs-preprocessor">.org</span>. (
+                              <span class="hljs-number">2</span>         <span class="hljs-comment">; Serial</span>
+                         <span class="hljs-number">604800</span>         <span class="hljs-comment">; Refresh</span>
+                          <span class="hljs-number">86400</span>         <span class="hljs-comment">; Retry</span>
+                        <span class="hljs-number">2419200</span>         <span class="hljs-comment">; Expire</span>
+                         <span class="hljs-number">604800</span> )       <span class="hljs-comment">; Negative Cache TTL</span>
+<span class="hljs-comment">;</span>
+da2i<span class="hljs-preprocessor">.org</span>.       <span class="hljs-keyword">IN</span>      NS      serveur<span class="hljs-preprocessor">.da</span>2i<span class="hljs-preprocessor">.org</span>.
+da2i<span class="hljs-preprocessor">.org</span>.       <span class="hljs-keyword">IN</span>      A       <span class="hljs-number">192.168</span><span class="hljs-number">.194</span><span class="hljs-number">.10</span>
+<span class="hljs-comment">;@      IN      NS      localhost.</span>
+<span class="hljs-comment">;@      IN      A       127.0.0.1</span>
+<span class="hljs-comment">;@      IN      AAAA    ::1</span>
+serveur  <span class="hljs-keyword">IN</span>      A       <span class="hljs-number">192.168</span><span class="hljs-number">.194</span><span class="hljs-number">.10</span>
+gateway <span class="hljs-keyword">IN</span>      A       <span class="hljs-number">192.168</span><span class="hljs-number">.194</span><span class="hljs-number">.2</span>
+debian  <span class="hljs-keyword">IN</span>      A       <span class="hljs-number">192.168</span><span class="hljs-number">.194</span><span class="hljs-number">.20</span>
+archlinux       <span class="hljs-keyword">IN</span>      A       <span class="hljs-number">192.168</span><span class="hljs-number">.194</span><span class="hljs-number">.30</span>
+freebsd <span class="hljs-keyword">IN</span>      A       <span class="hljs-number">192.168</span><span class="hljs-number">.194</span><span class="hljs-number">.40</span>
+www     <span class="hljs-keyword">IN</span>      CNAME   da2i<span class="hljs-preprocessor">.org</span>.</code></pre>
+
+
+
+<h3 id="edition-du-fichier-etcbindzonesdb192">Edition du fichier /etc/bind/zones/db.192</h3>
+
+
+
+<pre class="prettyprint"><code class=" hljs bash">nano /etc/<span class="hljs-built_in">bind</span>/zones/db.<span class="hljs-number">192</span></code></pre>
+
+
+
+<pre class="prettyprint"><code class=" hljs avrasm"><span class="hljs-comment">;</span>
+<span class="hljs-comment">; BIND reverse data file for local loopback interface</span>
+<span class="hljs-comment">;</span>
+$TTL    <span class="hljs-number">604800</span>
+@       <span class="hljs-keyword">IN</span>      SOA     serveur<span class="hljs-preprocessor">.da</span>2i<span class="hljs-preprocessor">.org</span>. webuser<span class="hljs-preprocessor">.da</span>2i<span class="hljs-preprocessor">.org</span>. (
+                              <span class="hljs-number">1</span>         <span class="hljs-comment">; Serial</span>
+                         <span class="hljs-number">604800</span>         <span class="hljs-comment">; Refresh</span>
+                          <span class="hljs-number">86400</span>         <span class="hljs-comment">; Retry</span>
+                        <span class="hljs-number">2419200</span>         <span class="hljs-comment">; Expire</span>
+                         <span class="hljs-number">604800</span> )       <span class="hljs-comment">; Negative Cache TTL</span>
+<span class="hljs-comment">;</span>
+<span class="hljs-comment">;@      IN      NS      localhost.</span>
+<span class="hljs-comment">;1.0.0  IN      PTR     localhost.</span>
+        <span class="hljs-keyword">IN</span>      NS      serveur.
+<span class="hljs-number">2</span>       <span class="hljs-keyword">IN</span>      PTR     gateway<span class="hljs-preprocessor">.da</span>2i<span class="hljs-preprocessor">.org</span>.
+<span class="hljs-number">10</span>      <span class="hljs-keyword">IN</span>      PTR     serveur<span class="hljs-preprocessor">.da</span>2i<span class="hljs-preprocessor">.org</span>.
+<span class="hljs-number">20</span>      <span class="hljs-keyword">IN</span>      PTR     debian<span class="hljs-preprocessor">.da</span>2i<span class="hljs-preprocessor">.org</span>.
+<span class="hljs-number">30</span>      <span class="hljs-keyword">IN</span>      PTR     archlinux<span class="hljs-preprocessor">.da</span>2i<span class="hljs-preprocessor">.org</span>.
+<span class="hljs-number">40</span>      <span class="hljs-keyword">IN</span>      PTR     freebsd<span class="hljs-preprocessor">.da</span>2i<span class="hljs-preprocessor">.org</span>.</code></pre>
+
+
+
+<h3 id="vérification-des-zones-saisies">Vérification des zones saisies</h3>
+
+
+
+<pre class="prettyprint"><code class=" hljs avrasm">named-checkzone da2i<span class="hljs-preprocessor">.org</span> /etc/bind/zones/db<span class="hljs-preprocessor">.da</span>2i<span class="hljs-preprocessor">.org</span>
+
+zone da2i<span class="hljs-preprocessor">.org</span>/<span class="hljs-keyword">IN</span>: loaded serial <span class="hljs-number">2</span>
+OK</code></pre>
+
+
+
+<pre class="prettyprint"><code class=" hljs avrasm">named-checkzone da2i<span class="hljs-preprocessor">.org</span> /etc/bind/zones/db<span class="hljs-number">.192</span>
+
+zone da2i<span class="hljs-preprocessor">.org</span>/<span class="hljs-keyword">IN</span>: loaded serial <span class="hljs-number">1</span>
+OK</code></pre>
+
+
+
+<h3 id="edition-du-fichier-etcresolvconf">Edition du fichier /etc/resolv.conf</h3>
+
+
+
+<pre class="prettyprint"><code class=" hljs avrasm">nano /etc/resolv<span class="hljs-preprocessor">.conf</span></code></pre>
+
+
+
+<pre class="prettyprint"><code class=" hljs avrasm">domain da2i<span class="hljs-preprocessor">.org</span>
+search da2i<span class="hljs-preprocessor">.org</span>
+nameserver <span class="hljs-number">192.168</span><span class="hljs-number">.194</span><span class="hljs-number">.10</span></code></pre>
+
+<p>Enfin, on redémarre le service bind9 via la commande suivante : <code>/etc/init.d/bind9 restart</code></p>
+
+
+
+<h3 id="vérification-de-la-configuration">Vérification de la configuration</h3>
+
+
+
+<pre class="prettyprint"><code class=" hljs bash">host <span class="hljs-operator">-l</span> da2i.org</code></pre>
+
+
+
+<pre class="prettyprint"><code class=" hljs avrasm">da2i<span class="hljs-preprocessor">.org</span> name serveur serveur<span class="hljs-preprocessor">.da</span>2i<span class="hljs-preprocessor">.org</span>.
+da2i<span class="hljs-preprocessor">.org</span> has address <span class="hljs-number">192.168</span><span class="hljs-number">.194</span><span class="hljs-number">.10</span>
+archlinux<span class="hljs-preprocessor">.da</span>2i<span class="hljs-preprocessor">.org</span> has address <span class="hljs-number">192.168</span><span class="hljs-number">.194</span><span class="hljs-number">.30</span>
+debian<span class="hljs-preprocessor">.da</span>2i<span class="hljs-preprocessor">.org</span> has address <span class="hljs-number">192.168</span><span class="hljs-number">.194</span><span class="hljs-number">.20</span>
+freebsd<span class="hljs-preprocessor">.da</span>2i<span class="hljs-preprocessor">.org</span> has address <span class="hljs-number">192.168</span><span class="hljs-number">.194</span><span class="hljs-number">.40</span>
+gateway<span class="hljs-preprocessor">.da</span>2i<span class="hljs-preprocessor">.org</span> has address <span class="hljs-number">192.168</span><span class="hljs-number">.194</span><span class="hljs-number">.2</span>
+serveur<span class="hljs-preprocessor">.da</span>2i<span class="hljs-preprocessor">.org</span> has address <span class="hljs-number">192.168</span><span class="hljs-number">.194</span><span class="hljs-number">.10</span></code></pre>
+
+
+
+<h2 id="ldap">LDAP</h2>
+
+
+
+<h3 id="installation-par-les-paquets-1">Installation par les paquets</h3>
+
+
+
+<pre class="prettyprint"><code class=" hljs lasso">apt<span class="hljs-attribute">-get</span> install slapd ldap<span class="hljs-attribute">-utils</span></code></pre>
+
+
+
+<h3 id="configuration-du-serveur-ldap">Configuration du serveur LDAP</h3>
+
+<p>On commence par définir la base et l’uri du LDAP.</p>
+
+
+
+<pre class="prettyprint"><code class=" hljs avrasm">nano /etc/ldap/ldap<span class="hljs-preprocessor">.conf</span></code></pre>
+
+
+
+<pre class="prettyprint"><code class=" hljs vala"><span class="hljs-preprocessor">#</span>
+<span class="hljs-preprocessor"># LDAP Defaults</span>
+<span class="hljs-preprocessor">#</span>
+
+<span class="hljs-preprocessor"># See ldap.conf(5) for details</span>
+<span class="hljs-preprocessor"># This file should be world readable but not world writable.</span>
+
+<span class="hljs-preprocessor">#BASE   dc=example,dc=com</span>
+<span class="hljs-preprocessor">#URI    ldap://ldap.example.com ldap://ldap-master.example.com:666</span>
+
+BASE dc=da2i, dc=org
+URI ldap:<span class="hljs-comment">//192.168.194.10/</span>
+
+<span class="hljs-preprocessor">#SIZELIMIT      12</span>
+<span class="hljs-preprocessor">#TIMELIMIT      15</span>
+<span class="hljs-preprocessor">#DEREF          never</span>
+
+<span class="hljs-preprocessor"># TLS certificates (needed for GnuTLS)</span>
+TLS_CACERT      /etc/ssl/certs/ca-certificates.crt</code></pre>
+
+<p>Puis on reconfigure l’ensemble.</p>
+
+
+
+<pre class="prettyprint"><code class=" hljs sql">dpkg-reconfigure slapd
+
+Omit OpenLDAP server configuration? No
+DNS domain name: da2i.org
+Organization name? da2i.org
+Administrator password: root
+Confirm password: root
+Database backend to use: HDB
+<span class="hljs-operator"><span class="hljs-keyword">Do</span> you want the <span class="hljs-keyword">database</span> <span class="hljs-keyword">to</span> be removed <span class="hljs-keyword">when</span> slapd <span class="hljs-keyword">is</span> purged? <span class="hljs-keyword">No</span>
+Allow LDAPv2 protocol? <span class="hljs-keyword">No</span></span></code></pre>
+
+
+
+<h4 id="configuration-des-accès">Configuration des accès</h4>
+
+
+
+<pre class="prettyprint"><code class=" hljs lasso">ldapadd <span class="hljs-attribute">-c</span> <span class="hljs-attribute">-Y</span> EXTERNAL <span class="hljs-attribute">-H</span> ldapi:<span class="hljs-comment">/// -f /etc/ldap/schema/core.ldif</span>
+ldapadd <span class="hljs-attribute">-c</span> <span class="hljs-attribute">-Y</span> EXTERNAL <span class="hljs-attribute">-H</span> ldapi:<span class="hljs-comment">/// -f /etc/ldap/schema/cosine.ldif</span>
+ldapadd <span class="hljs-attribute">-c</span> <span class="hljs-attribute">-Y</span> EXTERNAL <span class="hljs-attribute">-H</span> ldapi:<span class="hljs-comment">/// -f /etc/ldap/schema/nis.ldif</span>
+ldapadd <span class="hljs-attribute">-c</span> <span class="hljs-attribute">-Y</span> EXTERNAL <span class="hljs-attribute">-H</span> ldapi:<span class="hljs-comment">/// -f /etc/ldap/schema/inetorgperson.ldif</span></code></pre>
+
+
+
+<pre class="prettyprint"><code class=" hljs php"><span class="hljs-keyword">echo</span> <span class="hljs-string">"
+dn: cn=config
+changetype: modify
+replace: olcLogLevel
+olcLogLevel: 256
+"</span> &gt; /<span class="hljs-keyword">var</span>/tmp/loglevel.ldif</code></pre>
+
+
+
+<pre class="prettyprint"><code class=" hljs lasso">ldapmodify <span class="hljs-attribute">-Y</span> EXTERNAL <span class="hljs-attribute">-H</span> ldapi:<span class="hljs-comment">/// -f /var/tmp/loglevel.ldif</span></code></pre>
+
+
+
+<h4 id="configuration-de-lindexage">Configuration de l’indexage</h4>
+
+
+
+<pre class="prettyprint"><code class=" hljs php"><span class="hljs-keyword">echo</span> <span class="hljs-string">"
+dn: olcDatabase={1}hdb,cn=config
+changetype: modify
+add: olcDbIndex
+olcDbIndex: uid eq
+"</span> &gt; /<span class="hljs-keyword">var</span>/tmp/uid_eq.ldif</code></pre>
+
+
+
+<pre class="prettyprint"><code class=" hljs lasso">ldapmodify <span class="hljs-attribute">-Y</span> EXTERNAL <span class="hljs-attribute">-H</span> ldapi:<span class="hljs-comment">/// -f /var/tmp/uid_eq.ldif</span></code></pre>
+
+
+
+<h4 id="vérification-de-la-configuration-1">Vérification de la configuration</h4>
+
+
+
+<pre class="prettyprint"><code class=" hljs lasso">ldapsearch <span class="hljs-attribute">-x</span></code></pre>
+
+
+
+<pre class="prettyprint"><code class=" hljs avrasm"><span class="hljs-preprocessor"># extended LDIF</span>
+<span class="hljs-preprocessor">#</span>
+<span class="hljs-preprocessor"># LDAPv3</span>
+<span class="hljs-preprocessor"># base &lt;dc=da2i, dc=org&gt; (default) with scope subtree</span>
+<span class="hljs-preprocessor"># filter: (objectclass=*)</span>
+<span class="hljs-preprocessor"># requesting: ALL</span>
+<span class="hljs-preprocessor">#</span>
+
+<span class="hljs-preprocessor"># da2i.org</span>
+<span class="hljs-label">dn:</span> dc=da2i,dc=org
+<span class="hljs-label">objectClass:</span> top
+<span class="hljs-label">objectClass:</span> dcObject
+<span class="hljs-label">objectClass:</span> organization
+<span class="hljs-label">o:</span> da2i<span class="hljs-preprocessor">.org</span>
+<span class="hljs-label">dc:</span> da2i
+
+<span class="hljs-preprocessor"># admin, da2i.org</span>
+<span class="hljs-label">dn:</span> cn=admin,dc=da2i,dc=org
+<span class="hljs-label">objectClass:</span> simpleSecurityObject
+<span class="hljs-label">objectClass:</span> organizationalRole
+<span class="hljs-label">cn:</span> admin
+<span class="hljs-label">description:</span> LDAP administrator
+
+<span class="hljs-preprocessor"># search result</span>
+<span class="hljs-label">search:</span> <span class="hljs-number">2</span>
+<span class="hljs-label">result:</span> <span class="hljs-number">0</span> Success
+
+<span class="hljs-preprocessor"># numResponses: 3</span>
+<span class="hljs-preprocessor"># numEntries: 2</span></code></pre>
+
+
+
+<h3 id="création-de-larbre-ldap">Création de l’arbre LDAP</h3>
+
+<p>On crée deux objets, <strong>users</strong> et <strong>groups</strong> qui feront offices respectivement de <strong>/etc/passwd</strong> et <strong>/etc/group</strong>. <br>
+Ces deux objets auront pour objectClass <strong>organizationalUnit</strong> et seront préparés par l’intermédiaire d’un fichier temporaire.</p>
+
+
+
+<pre class="prettyprint"><code class=" hljs cs">nano /<span class="hljs-keyword">var</span>/tmp/ou.ldif</code></pre>
+
+
+
+<pre class="prettyprint"><code class=" hljs http"><span class="hljs-attribute">dn</span>: <span class="hljs-string">ou=users,dc=da2i,dc=org</span>
+<span class="hljs-attribute">ou</span>: <span class="hljs-string">users</span>
+<span class="hljs-attribute">objectClass</span>: <span class="hljs-string">organizationalUnit</span>
+
+<span class="http"><span class="hljs-attribute">dn</span>: <span class="hljs-string">ou=groupes,dc=da2i,dc=org</span>
+<span class="hljs-attribute">ou</span>: <span class="hljs-string">groupes</span>
+<span class="hljs-attribute">objectClass</span>: <span class="hljs-string">organizationalUnit</span></span></code></pre>
+
+<p>Après avoir préalablement éteint le serveur ldap avec la commande <code>invoke-rc.d slapd stop</code>, on ajoute le contenu du fichier temporaire à l’arbre LDAP.</p>
+
+
+
+<pre class="prettyprint"><code class=" hljs lasso">slapadd <span class="hljs-attribute">-c</span> <span class="hljs-attribute">-v</span> <span class="hljs-attribute">-l</span> /<span class="hljs-built_in">var</span>/tmp/ou<span class="hljs-built_in">.</span>ldif</code></pre>
+
+<p>Après avoir redémarré le serveur ldap avec la commande <code>invoke-rc.d slapd start</code>, on effectue une recherche sur ces nouveaux organizationalUnit pour vérifier notre configuration.</p>
+
+
+
+<pre class="prettyprint"><code class=" hljs lasso">ldapsearch <span class="hljs-attribute">-x</span></code></pre>
+
+
+
+<pre class="prettyprint"><code class=" hljs avrasm"><span class="hljs-preprocessor"># extended LDIF</span>
+<span class="hljs-preprocessor">#</span>
+<span class="hljs-preprocessor"># LDAPv3</span>
+<span class="hljs-preprocessor"># base &lt;dc=da2i, dc=org&gt; (default) with scope subtree</span>
+<span class="hljs-preprocessor"># filter: (objectclass=*)</span>
+<span class="hljs-preprocessor"># requesting: ALL</span>
+<span class="hljs-preprocessor">#</span>
+
+<span class="hljs-preprocessor"># da2i.org</span>
+<span class="hljs-label">dn:</span> dc=da2i,dc=org
+<span class="hljs-label">objectClass:</span> top
+<span class="hljs-label">objectClass:</span> dcObject
+<span class="hljs-label">objectClass:</span> organization
+<span class="hljs-label">o:</span> da2i<span class="hljs-preprocessor">.org</span>
+<span class="hljs-label">dc:</span> da2i
+
+<span class="hljs-preprocessor"># admin, da2i.org</span>
+<span class="hljs-label">dn:</span> cn=admin,dc=da2i,dc=org
+<span class="hljs-label">objectClass:</span> simpleSecurityObject
+<span class="hljs-label">objectClass:</span> organizationalRole
+<span class="hljs-label">cn:</span> admin
+<span class="hljs-label">description:</span> LDAP administrator
+
+<span class="hljs-preprocessor"># users, da2i.org</span>
+<span class="hljs-label">dn:</span> ou=users,dc=da2i,dc=org
+<span class="hljs-label">ou:</span> users
+<span class="hljs-label">objectClass:</span> organizationalUnit
+
+<span class="hljs-preprocessor"># groups, da2i.org</span>
+<span class="hljs-label">dn:</span> ou=groups,dc=da2i,dc=org
+<span class="hljs-label">ou:</span> groups
+<span class="hljs-label">objectClass:</span> organizationalUnit
+
+<span class="hljs-preprocessor"># search result</span>
+<span class="hljs-label">search:</span> <span class="hljs-number">2</span>
+<span class="hljs-label">result:</span> <span class="hljs-number">0</span> Success
+
+<span class="hljs-preprocessor"># numResponses: 5</span>
+<span class="hljs-preprocessor"># numEntries: 4</span></code></pre>
+
+
+
+<h3 id="ajout-dutilisateurs">Ajout d’utilisateurs</h3>
+
+<p>Nous allons maintenant créer nos 3 utilisateurs bernard, georges et robert et les ajouter à l’arbre du LDAP. <br>
+Ces utilisateurs seront créés par l’intermédiaire de 3 fichiers, respectivement /var/tmp/bernard.ldif, /var/tmp/georges.ldif et /var/tmp/robert.ldif.</p>
+
+<p>N’oublions pas non plus d’éteindre le serveur avant toute opération : <code>invoke-rc.d slapd stop</code>.</p>
+
+
+
+<h4 id="exemple-avec-lutilisateur-bernard">Exemple avec l’utilisateur bernard</h4>
+
+<ul>
+<li>Ajout de l’utilisateur</li>
+</ul>
+
+
+
+<pre class="prettyprint"><code class=" hljs cs">nano /<span class="hljs-keyword">var</span>/tmp/bernard.ldif</code></pre>
+
+
+
+<pre class="prettyprint"><code class=" hljs http"><span class="hljs-attribute">dn</span>: <span class="hljs-string">cn=bernard,ou=groups,dc=da2i,dc=org</span>
+<span class="hljs-attribute">cn</span>: <span class="hljs-string">bernard</span>
+<span class="hljs-attribute">gidNumber</span>: <span class="hljs-string">1001</span>
+<span class="hljs-attribute">objectClass</span>: <span class="hljs-string">top</span>
+<span class="hljs-attribute">objectClass</span>: <span class="hljs-string">posixGroup</span>
+
+<span class="http"><span class="hljs-attribute">dn</span>: <span class="hljs-string">uid=bernard,ou=users,dc=da2i,dc=org</span>
+<span class="hljs-attribute">uid</span>: <span class="hljs-string">bernard</span>
+<span class="hljs-attribute">uidNumber</span>: <span class="hljs-string">1001</span>
+<span class="hljs-attribute">gidNumber</span>: <span class="hljs-string">1001</span>
+<span class="hljs-attribute">cn</span>: <span class="hljs-string">bernard</span>
+<span class="hljs-attribute">sn</span>: <span class="hljs-string">bernard</span>
+<span class="hljs-attribute">objectClass</span>: <span class="hljs-string">top</span>
+<span class="hljs-attribute">objectClass</span>: <span class="hljs-string">person</span>
+<span class="hljs-attribute">objectClass</span>: <span class="hljs-string">posixAccount</span>
+<span class="hljs-attribute">objectClass</span>: <span class="hljs-string">shadowAccount</span>
+<span class="hljs-attribute">loginShell</span>: <span class="hljs-string">/bin/bash</span>
+<span class="hljs-attribute">homeDirectory</span>: <span class="hljs-string">/home/bernard</span></span></code></pre>
+
+
+
+<pre class="prettyprint"><code class=" hljs lasso">ldapadd <span class="hljs-attribute">-c</span> <span class="hljs-attribute">-x</span> <span class="hljs-attribute">-D</span> <span class="hljs-literal">cn</span><span class="hljs-subst">=</span>admin,dc<span class="hljs-subst">=</span>da2i,dc<span class="hljs-subst">=</span>org <span class="hljs-attribute">-W</span> <span class="hljs-attribute">-f</span> /<span class="hljs-built_in">var</span>/tmp/bernard<span class="hljs-built_in">.</span>ldif</code></pre>
+
+<ul>
+<li>Modification du mot de passe</li>
+</ul>
+
+
+
+<pre class="prettyprint"><code class=" hljs lasso">ldappasswd <span class="hljs-attribute">-x</span> <span class="hljs-attribute">-D</span> <span class="hljs-literal">cn</span><span class="hljs-subst">=</span>admin,dc<span class="hljs-subst">=</span>da2i,dc<span class="hljs-subst">=</span>org <span class="hljs-attribute">-W</span> <span class="hljs-attribute">-S</span> uid<span class="hljs-subst">=</span>bernard,ou<span class="hljs-subst">=</span>users,dc<span class="hljs-subst">=</span>da2i,dc<span class="hljs-subst">=</span>org</code></pre>
+
+<ul>
+<li>Vérification de l’ajout</li>
+</ul>
+
+
+
+<pre class="prettyprint"><code class=" hljs fix"><span class="hljs-attribute">ldapsearch -x uid</span>=<span class="hljs-string">bernard</span></code></pre>
+
+<p>On effectue enfin les mêmes opérations pour georges et robert.</p>
+
+
+
+<h2 id="serveur-nfs">Serveur NFS</h2>
+
+
+
+<h3 id="installation-par-les-paquets-2">Installation par les paquets</h3>
+
+
+
+<pre class="prettyprint"><code class=" hljs lasso">apt<span class="hljs-attribute">-get</span> install nfs<span class="hljs-attribute">-kernel</span><span class="hljs-attribute">-server</span></code></pre>
+
+
+
+<h3 id="configuration-du-point-de-montage">Configuration du point de montage</h3>
+
+
+
+<pre class="prettyprint"><code class=" hljs perl"><span class="hljs-keyword">mkdir</span> /srv/home
+<span class="hljs-keyword">mkdir</span> /srv/home/bernard
+<span class="hljs-keyword">mkdir</span> /srv/home/georges
+<span class="hljs-keyword">mkdir</span> /srv/home/robert 
+<span class="hljs-keyword">chmod</span> go+rwx /srv/home/bernard
+<span class="hljs-keyword">chmod</span> go+rwx /srv/home/georges
+<span class="hljs-keyword">chmod</span> go+rwx /srv/home/robert</code></pre>
+
+
+
+<pre class="prettyprint"><code class=" hljs coffeescript">nano /etc/<span class="hljs-built_in">exports</span></code></pre>
+
+
+
+<pre class="prettyprint"><code class=" hljs avrasm">/srv/home *<span class="hljs-preprocessor">.da</span>2i<span class="hljs-preprocessor">.org</span>(rw,sync,no_subtree_check)</code></pre>
+
+<p>Une fois la configuration terminée, on démarre le serveur nfs via la commande <code>/etc/init.d/nfs-kernel-server start</code>.</p>
+
+<hr>
+
+
+
+<h1 id="les-clients">Les clients</h1>
+
+
+
+<h2 id="client-debian">Client Debian</h2>
+
+
+
+<h3 id="montage-nfs">Montage NFS</h3>
+
+
+
+<h4 id="installation-par-les-paquets-3">Installation par les paquets</h4>
+
+
+
+<pre class="prettyprint"><code class=" hljs lasso">apt<span class="hljs-attribute">-get</span> install libnss<span class="hljs-attribute">-ldap</span> libpam<span class="hljs-attribute">-ldap</span> nscd
+
+dpkg<span class="hljs-attribute">-reconfigure</span> libnss<span class="hljs-attribute">-ldap</span>
+dpkg<span class="hljs-attribute">-reconfigure</span> libpam<span class="hljs-attribute">-ldap</span></code></pre>
+
+
+
+<pre class="prettyprint"><code class=" hljs livecodeserver">LDAP server URI: ldap://<span class="hljs-number">192.168</span><span class="hljs-number">.194</span><span class="hljs-number">.10</span>/
+Distinguished name <span class="hljs-operator">of</span> <span class="hljs-operator">the</span> search base: dc=da2i,dc=org
+LDAP <span class="hljs-built_in">version</span> <span class="hljs-built_in">to</span> use: <span class="hljs-number">3</span>
+Does <span class="hljs-operator">the</span> LDAP database <span class="hljs-built_in">require</span> login? No
+Special LDAP privileges <span class="hljs-keyword">for</span> root? No
+Make <span class="hljs-operator">the</span> configuration <span class="hljs-built_in">file</span> readable/writable <span class="hljs-keyword">by</span> its owner only? No
+Allow LDAP admin account <span class="hljs-built_in">to</span> behave like <span class="hljs-built_in">local</span> root? Yes
+Make <span class="hljs-built_in">local</span> root Database admin. No
+Does <span class="hljs-operator">the</span> LDAP database <span class="hljs-built_in">require</span> login? No
+LDAP administrative account: cn=admin,dc=da2i,dc=org
+LDAP administrative password: &lt;PASSWORD&gt;
+DLocal crypt <span class="hljs-built_in">to</span> use when changing passwords. md5</code></pre>
+
+
+
+<pre class="prettyprint"><code class=" hljs avrasm">nano /etc/nsswitch<span class="hljs-preprocessor">.conf</span></code></pre>
+
+
+
+<pre class="prettyprint"><code class=" hljs http"><span class="hljs-attribute">passwd</span>: <span class="hljs-string">        files ldap</span>
+<span class="hljs-attribute">group</span>: <span class="hljs-string">         files ldap</span></code></pre>
+
+<p>Après avoir préalablement éteint NSCD via la commande <code>invoke-rc.d nscd stop</code>, on vérifie l’existence de l’utilisateur bernard</p>
+
+
+
+<pre class="prettyprint"><code class=" hljs fix"><span class="hljs-attribute">id bernard
+uid</span>=<span class="hljs-string">1001(bernard) gid=1001(bernard) groupes=1001(bernard)</span></code></pre>
+
+
+
+<h4 id="configuration-du-pam">Configuration du PAM</h4>
+
+<p>Nous allons à présent configurer le PAM afin que les identifiants du LDAP soient demandés à l’accueil de la machine.</p>
+
+<ul>
+<li>/etc/pam.d/common-account</li>
+</ul>
+
+
+
+<pre class="prettyprint"><code class=" hljs haskell"><span class="hljs-title">account</span> [success=<span class="hljs-number">2</span> new_authtok_reqd=done <span class="hljs-default"><span class="hljs-keyword">default</span>=ignore]        pam_unix.so</span>
+<span class="hljs-title">account</span> [success=<span class="hljs-number">1</span> <span class="hljs-default"><span class="hljs-keyword">default</span>=ignore]      pam_ldap.so</span>
+
+<span class="hljs-title">account</span> requisite                       pam_deny.so
+
+<span class="hljs-title">account</span> required                        pam_permit.so</code></pre>
+
+<ul>
+<li>/etc/pam.d/common-auth</li>
+</ul>
+
+
+
+<pre class="prettyprint"><code class=" hljs haskell"><span class="hljs-title">auth</span>    [success=<span class="hljs-number">2</span> <span class="hljs-default"><span class="hljs-keyword">default</span>=ignore]      pam_unix.so nullok_secure</span>
+<span class="hljs-title">auth</span>    [success=<span class="hljs-number">1</span> <span class="hljs-default"><span class="hljs-keyword">default</span>=ignore]      pam_ldap.so use_first_pass</span>
+
+<span class="hljs-title">auth</span>    requisite                       pam_deny.so
+
+<span class="hljs-title">auth</span>    required                        pam_permit.so</code></pre>
+
+<ul>
+<li>/etc/pam.d/common-password</li>
+</ul>
+
+
+
+<pre class="prettyprint"><code class=" hljs haskell"><span class="hljs-title">password</span>        [success=<span class="hljs-number">2</span> <span class="hljs-default"><span class="hljs-keyword">default</span>=ignore]      pam_unix.so obscure sha512</span>
+<span class="hljs-title">password</span>        [success=<span class="hljs-number">1</span> user_unknown=ignore <span class="hljs-default"><span class="hljs-keyword">default</span>=die]     pam_ldap.so use_authtok try_first_pass</span>
+
+<span class="hljs-title">password</span>        requisite                       pam_deny.so
+
+<span class="hljs-title">password</span>        required                        pam_permit.so</code></pre>
+
+<ul>
+<li>/etc/pam.d/common-session</li>
+</ul>
+
+
+
+<pre class="prettyprint"><code class=" hljs avrasm">session [default=<span class="hljs-number">1</span>]                     pam_permit<span class="hljs-preprocessor">.so</span>
+
+session requisite                       pam_deny<span class="hljs-preprocessor">.so</span>
+
+session required                        pam_permit<span class="hljs-preprocessor">.so</span>
+
+session required        pam_unix<span class="hljs-preprocessor">.so</span></code></pre>
+
+
+
+<h3 id="configuration-du-fstab">Configuration du fstab</h3>
+
+<p>Afin d’associer le répertoire utilisateur du serveur au répertoire du client, on édite le fichier /etc/fstab.</p>
+
+
+
+<pre class="prettyprint"><code class=" hljs ruby"><span class="hljs-number">192.168</span>.<span class="hljs-number">194.10</span><span class="hljs-symbol">:/srv/home</span>        /home   nfs4    auto    <span class="hljs-number">0</span>       <span class="hljs-number">0</span></code></pre>
+
+<p>Attention, il se peut qu’une ligne comme ci-après existe. Si tel est le cas, il faut la commenter.</p>
+
+
+
+<pre class="prettyprint"><code class=" hljs fix"><span class="hljs-attribute">UUID</span>=<span class="hljs-string">dd3a0110-1482-4592-8c95-3ba3ebfb8e84 /home           btrfs   defaults    $</span></code></pre>
+
+<p>On peut maintenant redémarrer la machine avec la commande <code>reboot</code>.</p>
+
+<h2 id="sources">Sources</h2>
+
+<ul>
+<li>Bind9 <br>
+<ul><li><a href="https://wiki.debian.org/fr/Bind9">https://wiki.debian.org/fr/Bind9</a></li>
+<li><a href="https://doc.ubuntu-fr.org/bind9">https://doc.ubuntu-fr.org/bind9</a></li></ul></li>
+<li>LDAP <br>
+<ul><li><a href="http://uid.free.fr/Ldap/ldap.html">http://uid.free.fr/Ldap/ldap.html</a></li>
+<li><a href="http://www.tecmint.com/install-openldap-server-and-administer-with-phpldapadmin-in-debianubuntu/">http://www.tecmint.com/install-openldap-server-and-administer-with-phpldapadmin-in-debianubuntu/</a></li>
+<li><a href="http://www.ghacks.net/2010/09/03/modify-ldap-entries-with-the-ldapmodify-command/">http://www.ghacks.net/2010/09/03/modify-ldap-entries-with-the-ldapmodify-command/</a></li></ul></li>
+<li>ArchLinux <br>
+<ul><li><a href="https://wiki.archlinux.fr/Installation">https://wiki.archlinux.fr/Installation</a></li>
+<li><a href="http://fredbezies.developpez.com/tutoriels/linux/installation-archlinux/">http://fredbezies.developpez.com/tutoriels/linux/installation-archlinux/</a></li></ul></li>
+<li>Xfce <br>
+<ul><li><a href="https://wiki.debian.org/fr/Xfce#Installation_d.27un_nouveau_syst.2BAOg-me_avec_Xfce">https://wiki.debian.org/fr/Xfce#Installation_d.27un_nouveau_syst.2BAOg-me_avec_Xfce</a></li></ul></li>
+</ul></div></body>
+</html>
