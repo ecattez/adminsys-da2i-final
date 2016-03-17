@@ -1,5 +1,6 @@
 127.0.0.1	localhost
 127.0.1.1	debian.da2i.org	debian
+192.168.194.10	serveur	serveur.da2i.org
 
 # The following lines are desirable for IPv6 capable hosts
 ::1     localhost ip6-localhost ip6-loopback
